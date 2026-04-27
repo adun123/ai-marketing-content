@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BookmarkPlus,
   Check,
+  CircleHelp,
   ChevronRight,
   Copy,
   Download,
@@ -18,6 +19,7 @@ import {
   Upload,
   Wand2,
 } from "lucide-react";
+import GuidedTour from "@/components/GuidedTour";
 
 type CreativeType = "image" | "video";
 type Platform = "instagram" | "tiktok" | "youtube" | "linkedin" | "x" | "custom";
@@ -125,6 +127,34 @@ const mockSource: StoredSource = {
     notes: "Keep it premium and minimal. Avoid overpromising.",
   },
 };
+const contentTourStorageKey = "aiContentDashboard.onboarding.content.v1";
+const contentTourSteps = [
+  {
+    targetId: "content-tour-header",
+    title: "Content Generation",
+    description: "Pilih jenis konten yang ingin kamu buat, foto atau video, lalu generate output siap publish.",
+  },
+  {
+    targetId: "content-tour-source",
+    title: "Creative Source",
+    description: "Panel ini menyimpan context dari trend/draft sebelumnya atau bisa diisi manual untuk prompt custom.",
+  },
+  {
+    targetId: "content-tour-settings",
+    title: "Platform & Format",
+    description: "Atur platform, ukuran, tone brand, dan mode image/video agar output sesuai channel target.",
+  },
+  {
+    targetId: "content-tour-preview",
+    title: "Preview & Output",
+    description: "Hasil creative, prompt, script, dan scene breakdown akan tampil di sini setelah generate.",
+  },
+  {
+    targetId: "content-tour-actions",
+    title: "Final Actions",
+    description: "Gunakan action bar ini untuk simpan, export, atau kirim hasil ke Marketing Dashboard.",
+  },
+];
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -222,7 +252,7 @@ function sourceFromManualForm(manual: ManualSourceForm): StoredSource {
   };
 }
 
-export default function ContentPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
+export default function ContentPage({ onNavigate, tourRestartToken = 0 }: { onNavigate?: (page: string) => void; tourRestartToken?: number }) {
   const [creativeType, setCreativeType] = useState<CreativeType>("image");
   const [platform, setPlatform] = useState<Platform>("instagram");
   const [aspect, setAspect] = useState<Aspect>("9:16");
@@ -259,6 +289,7 @@ export default function ContentPage({ onNavigate }: { onNavigate?: (page: string
   const [assets, setAssets] = useState<UploadedAsset[]>([]);
   const [source, setSource] = useState<StoredSource>(mockSource);
   const [sourceMode, setSourceMode] = useState<SourceMode>("imported");
+  const [tourOpen, setTourOpen] = useState(false);
   const [manualSource, setManualSource] = useState<ManualSourceForm>({
     topic: mockSource.insight.topic,
     audience: mockSource.insight.audience,
@@ -326,6 +357,24 @@ export default function ContentPage({ onNavigate }: { onNavigate?: (page: string
       },
     ]);
   }, []);
+
+  useEffect(() => {
+    try {
+      const done = localStorage.getItem(contentTourStorageKey) === "done";
+      if (!done) setTourOpen(true);
+    } catch {
+      setTourOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tourRestartToken > 0) setTourOpen(true);
+  }, [tourRestartToken]);
+
+  const handleTourClose = () => {
+    setTourOpen(false);
+    localStorage.setItem(contentTourStorageKey, "done");
+  };
 
   const activeSource = useMemo(() => (sourceMode === "manual" ? sourceFromManualForm(manualSource) : source), [manualSource, source, sourceMode]);
   const sourceLabel = sourceMode === "manual" ? "manual prompt context" : "selected trend insight & marketing draft";
@@ -684,7 +733,7 @@ export default function ContentPage({ onNavigate }: { onNavigate?: (page: string
 
   return (
     <div className="space-y-6 fade-in pb-24 lg:pb-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div id="content-tour-header" className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
             <span className="rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-slate-600">Discover</span>
@@ -700,19 +749,29 @@ export default function ContentPage({ onNavigate }: { onNavigate?: (page: string
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Generated from selected trend insight and marketing draft.</p>
         </div>
 
-        <button
-          onClick={handleGenerate}
-          disabled={loading}
-          className="btn-gradient inline-flex items-center justify-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl disabled:opacity-70"
-        >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-          Generate Creative
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setTourOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+          >
+            <CircleHelp className="w-4 h-4" />
+            Help
+          </button>
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="btn-gradient inline-flex items-center justify-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl disabled:opacity-70"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+            Generate Creative
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <aside className="lg:col-span-3 space-y-4 order-1">
-          <div className="bg-white dark:bg-slate-900/70 rounded-2xl p-5 card-shadow border border-slate-200 dark:border-slate-800">
+          <div id="content-tour-source" className="bg-white dark:bg-slate-900/70 rounded-2xl p-5 card-shadow border border-slate-200 dark:border-slate-800">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Creative Source</p>
@@ -783,7 +842,7 @@ export default function ContentPage({ onNavigate }: { onNavigate?: (page: string
             </button>
           </div>
 
-          <div className="bg-white dark:bg-slate-900/70 rounded-2xl p-5 card-shadow border border-slate-200 dark:border-slate-800">
+          <div id="content-tour-settings" className="bg-white dark:bg-slate-900/70 rounded-2xl p-5 card-shadow border border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Creative Type</p>
@@ -870,7 +929,7 @@ export default function ContentPage({ onNavigate }: { onNavigate?: (page: string
         </aside>
 
         <section className="lg:col-span-5 space-y-4 order-2">
-          <div className="bg-white dark:bg-slate-900/70 rounded-2xl p-5 card-shadow border border-slate-200 dark:border-slate-800">
+          <div id="content-tour-preview" className="bg-white dark:bg-slate-900/70 rounded-2xl p-5 card-shadow border border-slate-200 dark:border-slate-800">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Platform &amp; Format</p>
@@ -1334,7 +1393,7 @@ export default function ContentPage({ onNavigate }: { onNavigate?: (page: string
         </section>
       </div>
 
-      <div className="fixed bottom-4 left-4 right-4 lg:left-[calc(var(--sidebar-width)+1rem)] lg:right-6 z-30">
+      <div id="content-tour-actions" className="fixed bottom-4 left-4 right-4 lg:left-[calc(var(--sidebar-width)+1rem)] lg:right-6 z-30">
         <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
@@ -1374,6 +1433,7 @@ export default function ContentPage({ onNavigate }: { onNavigate?: (page: string
           </div>
         </div>
       </div>
+      <GuidedTour isOpen={tourOpen} steps={contentTourSteps} onClose={handleTourClose} />
     </div>
   );
 }

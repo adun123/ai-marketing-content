@@ -1,11 +1,12 @@
 "use client";
-import { Search, Bell, Plus, User, ChevronDown, ChevronRight } from "lucide-react";
+import { Search, Bell, Plus, User, ChevronDown, CircleHelp } from "lucide-react";
 
 interface NavbarProps {
   currentPage: string;
   onNavigate: (page: string) => void;
   sidebarCollapsed?: boolean;
   onToggleSidebar?: () => void;
+  onStartTour?: () => void;
 }
 
 const pageTitles: Record<string, string> = {
@@ -17,7 +18,7 @@ const pageTitles: Record<string, string> = {
   settings: "Settings",
 };
 
-export default function Navbar({ currentPage, onNavigate, sidebarCollapsed, onToggleSidebar }: NavbarProps) {
+export default function Navbar({ currentPage, onNavigate, sidebarCollapsed, onToggleSidebar, onStartTour }: NavbarProps) {
   return (
     <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-4 lg:px-6 py-3 transition-colors">
       <div className="flex items-center gap-3">
@@ -44,6 +45,14 @@ export default function Navbar({ currentPage, onNavigate, sidebarCollapsed, onTo
         {/* Actions */}
         <div className="flex items-center gap-2">
           {/* Notification */}
+          <button
+            className="relative w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
+            aria-label="Help tour"
+            onClick={onStartTour}
+          >
+            <CircleHelp className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+          </button>
+
           <button className="relative w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors" aria-label="Notifications">
             <Bell className="w-4 h-4 text-slate-600 dark:text-slate-300" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full"></span>

@@ -1,10 +1,12 @@
 "use client";
 import type { ElementType } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import GuidedTour from "@/components/GuidedTour";
 import {
   ArrowRight,
   BookmarkPlus,
   Check,
+  CircleHelp,
   ChevronRight,
   Filter,
   Hash,
@@ -155,6 +157,34 @@ const platformColors: Record<string, string> = {
   "LinkedIn": "bg-blue-50 text-blue-600",
   "YouTube": "bg-red-50 text-red-600",
 };
+const trendsTourStorageKey = "aiContentDashboard.onboarding.trends.v1";
+const trendsTourSteps = [
+  {
+    targetId: "trends-tour-header",
+    title: "Trend & Social Insight",
+    description: "Di sini kamu bisa melihat insight dari trend yang dipilih dan memulai workflow ke draft marketing.",
+  },
+  {
+    targetId: "trends-tour-filters",
+    title: "Search & Filters",
+    description: "Gunakan filter platform, industri, dan audience untuk menemukan signal trend yang paling relevan.",
+  },
+  {
+    targetId: "trends-tour-topics",
+    title: "Trending Topics",
+    description: "Bagian ini menampilkan daftar trend terurut. Klik Analyze untuk membuat insight AI per trend.",
+  },
+  {
+    targetId: "trends-tour-insight",
+    title: "AI Insight Panel",
+    description: "Hasil analisis trend tampil di panel ini, lengkap dengan hook, angle konten, CTA, dan audience insight.",
+  },
+  {
+    targetId: "trends-tour-action",
+    title: "Send to Marketing Draft",
+    description: "Setelah insight cocok, kirim ke halaman Draft supaya context otomatis terbawa.",
+  },
+];
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -214,7 +244,7 @@ function buildMockInsight(trend: Trend, industry: Industry, audience: Audience, 
   };
 }
 
-export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
+export default function TrendsPage({ onNavigate, tourRestartToken = 0 }: { onNavigate?: (page: string) => void; tourRestartToken?: number }) {
   const [activePlatform, setActivePlatform] = useState<Platform>("All");
   const [activeIndustry, setActiveIndustry] = useState<Industry>("All");
   const [activeAudience, setActiveAudience] = useState<Audience>("All");
@@ -224,7 +254,30 @@ export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string)
   const [insight, setInsight] = useState<Insight | null>(null);
   const [saved, setSaved] = useState(false);
   const [sent, setSent] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
   const insightPanelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    try {
+      const done = localStorage.getItem(trendsTourStorageKey) === "done";
+      if (!done) setTourOpen(true);
+    } catch {
+      setTourOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tourRestartToken > 0) setTourOpen(true);
+  }, [tourRestartToken]);
+
+  const handleTourClose = (completed: boolean) => {
+    setTourOpen(false);
+    if (!completed) {
+      localStorage.setItem(trendsTourStorageKey, "done");
+      return;
+    }
+    localStorage.setItem(trendsTourStorageKey, "done");
+  };
 
   const filtered = useMemo(() => {
     return mockTrends
@@ -308,7 +361,7 @@ export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string)
   return (
     <div className="space-y-6 fade-in pb-24 lg:pb-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div id="trends-tour-header" className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
             <span className="rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1 dark:text-slate-200">Step 1 of 3: Discover</span>
@@ -323,14 +376,24 @@ export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string)
           </p>
         </div>
 
-        <button
-          onClick={() => runGenerate("generate")}
-          disabled={loadingInsight || filtered.length === 0}
-          className="btn-gradient inline-flex items-center justify-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl disabled:opacity-70"
-        >
-          {loadingInsight ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          Generate Insight
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setTourOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+          >
+            <CircleHelp className="w-4 h-4" />
+            Help
+          </button>
+          <button
+            onClick={() => runGenerate("generate")}
+            disabled={loadingInsight || filtered.length === 0}
+            className="btn-gradient inline-flex items-center justify-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl disabled:opacity-70"
+          >
+            {loadingInsight ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            Generate Insight
+          </button>
+        </div>
       </div>
 
       {/* Workspace */}
@@ -338,7 +401,7 @@ export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string)
         {/* Left column: Search + Trends */}
         <div className="lg:col-span-7 space-y-4">
           {/* Search & filters */}
-          <div className="bg-white dark:bg-slate-900/70 rounded-2xl p-5 card-shadow border border-slate-200 dark:border-slate-800">
+          <div id="trends-tour-filters" className="bg-white dark:bg-slate-900/70 rounded-2xl p-5 card-shadow border border-slate-200 dark:border-slate-800">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Search &amp; Filters</p>
@@ -388,7 +451,7 @@ export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string)
           </div>
 
           {/* Trending topics */}
-          <div className="bg-white dark:bg-slate-900/70 rounded-2xl p-5 card-shadow border border-slate-200 dark:border-slate-800">
+          <div id="trends-tour-topics" className="bg-white dark:bg-slate-900/70 rounded-2xl p-5 card-shadow border border-slate-200 dark:border-slate-800">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Trending Topics</p>
@@ -433,7 +496,7 @@ export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string)
         </div>
 
         {/* Right column: AI Insight */}
-        <div ref={insightPanelRef} className="lg:col-span-5">
+        <div id="trends-tour-insight" ref={insightPanelRef} className="lg:col-span-5">
           <div className="sticky top-24 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">AI Insight Panel</h2>
@@ -514,7 +577,7 @@ export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string)
 
       {/* Workflow action bar */}
       {insight ? (
-        <div className="fixed bottom-4 left-4 right-4 lg:left-[calc(var(--sidebar-width)+1rem)] lg:right-6 z-30">
+        <div id="trends-tour-action" className="fixed bottom-4 left-4 right-4 lg:left-[calc(var(--sidebar-width)+1rem)] lg:right-6 z-30">
           <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
@@ -544,6 +607,8 @@ export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string)
           </div>
         </div>
       ) : null}
+
+      <GuidedTour isOpen={tourOpen} steps={trendsTourSteps} onClose={handleTourClose} />
     </div>
   );
 }

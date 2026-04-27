@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BookmarkPlus, Check, Copy, Loader2, Pencil, RefreshCw, Sparkles, Target, Wand2 } from "lucide-react";
+import { ArrowRight, BookmarkPlus, Check, CircleHelp, Copy, Loader2, Pencil, RefreshCw, Sparkles, Target, Wand2 } from "lucide-react";
+import GuidedTour from "@/components/GuidedTour";
 
 type Platform = "Instagram" | "TikTok" | "LinkedIn" | "YouTube" | "X/Twitter";
 type Goal = "Awareness" | "Engagement" | "Lead Generation" | "Conversion" | "Retention";
@@ -82,6 +83,34 @@ const defaultManualForm: ManualForm = {
   keyMessage: "",
   notes: "",
 };
+const draftTourStorageKey = "aiContentDashboard.onboarding.draft.v1";
+const draftTourSteps = [
+  {
+    targetId: "draft-tour-header",
+    title: "Marketing Draft Generator",
+    description: "Bagian ini digunakan untuk membuat draft marketing dari insight trend atau dari input manual.",
+  },
+  {
+    targetId: "draft-tour-mode",
+    title: "Pilih Mode Draft",
+    description: "Gunakan mode Trend Insight untuk alur otomatis, atau Start from Scratch untuk ide baru dari nol.",
+  },
+  {
+    targetId: "draft-tour-inputs",
+    title: "Form Input Campaign",
+    description: "Isi goal, tone, platform, dan pesan utama supaya hasil draft lebih sesuai kebutuhan kampanye.",
+  },
+  {
+    targetId: "draft-tour-output",
+    title: "Draft Output Panel",
+    description: "Di panel ini kamu bisa review hook, caption, CTA, hashtags, lalu copy hasil untuk dipakai tim.",
+  },
+  {
+    targetId: "draft-tour-send",
+    title: "Kirim ke Content Generation",
+    description: "Jika draft sudah oke, kirim ke halaman Content Generation agar langsung dipakai sebagai context.",
+  },
+];
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -159,7 +188,7 @@ function buildMockDraft(mode: DraftMode, insight: ImportedInsight, insightForm: 
   };
 }
 
-export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
+export default function DraftPage({ onNavigate, tourRestartToken = 0 }: { onNavigate?: (page: string) => void; tourRestartToken?: number }) {
   const [mode, setMode] = useState<DraftMode>("manual");
   const [importedInsight, setImportedInsight] = useState<ImportedInsight>(fallbackInsight);
   const [insightForm, setInsightForm] = useState<InsightForm>(defaultInsightForm);
@@ -171,6 +200,7 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [sent, setSent] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
   const outputPanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -181,6 +211,25 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
     setMode(fromTrend ? "insight" : "manual");
     localStorage.removeItem("aiContentDashboard.draftSource");
   }, []);
+
+  useEffect(() => {
+    try {
+      const done = localStorage.getItem(draftTourStorageKey) === "done";
+      if (!done) setTourOpen(true);
+    } catch {
+      setTourOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tourRestartToken > 0) setTourOpen(true);
+  }, [tourRestartToken]);
+
+  const handleTourClose = (completed: boolean) => {
+    setTourOpen(false);
+    localStorage.setItem(draftTourStorageKey, "done");
+    if (!completed) return;
+  };
 
   const isGenerateDisabled = useMemo(() => {
     if (mode === "insight") {
@@ -295,7 +344,7 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
 
   return (
     <div className="space-y-6 pb-10 fade-in bg-slate-50 dark:bg-transparent">
-      <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-6">
+      <div id="draft-tour-header" className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <span className="inline-flex items-center rounded-full border border-slate-200 dark:border-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
@@ -304,18 +353,28 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
             <h1 className="mt-3 text-2xl font-bold text-slate-900 dark:text-slate-100">Marketing Draft Generator</h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Turn insights or ideas into campaign-ready marketing drafts.</p>
           </div>
-          <button
-            type="button"
-            disabled={loading || isGenerateDisabled}
-            onClick={handleGenerate}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-            Generate Draft
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTourOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              <CircleHelp className="h-4 w-4" />
+              Help
+            </button>
+            <button
+              type="button"
+              disabled={loading || isGenerateDisabled}
+              onClick={handleGenerate}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+              Generate Draft
+            </button>
+          </div>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 p-1 flex w-full sm:w-fit">
+        <div id="draft-tour-mode" className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 p-1 flex w-full sm:w-fit">
           <button
             type="button"
             onClick={() => switchMode("insight")}
@@ -341,7 +400,7 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <section className="xl:col-span-7 space-y-4 transition-all duration-300">
+        <section id="draft-tour-inputs" className="xl:col-span-7 space-y-4 transition-all duration-300">
           {mode === "insight" ? (
             <>
               <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-5">
@@ -429,7 +488,7 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
         </section>
 
         <section className="xl:col-span-5 space-y-4">
-          <div ref={outputPanelRef} className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-5">
+          <div id="draft-tour-output" ref={outputPanelRef} className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Draft Output Panel</p>
@@ -528,7 +587,7 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
       </div>
 
       {draft ? (
-        <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-4 sm:p-5">
+        <div id="draft-tour-send" className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-4 sm:p-5">
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">This draft will be used to generate image or video creative.</p>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -558,6 +617,7 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
           </div>
         </div>
       ) : null}
+      <GuidedTour isOpen={tourOpen} steps={draftTourSteps} onClose={handleTourClose} />
     </div>
   );
 }

@@ -12,13 +12,26 @@ import SettingsPage from "@/components/pages/SettingsPage";
 export default function Home() {
   const [currentPage, setCurrentPage] = useState("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [tourRestartToken, setTourRestartToken] = useState<Record<string, number>>({
+    trends: 0,
+    draft: 0,
+    content: 0,
+  });
+
+  const triggerTour = () => {
+    if (!["trends", "draft", "content"].includes(currentPage)) return;
+    setTourRestartToken((prev) => ({
+      ...prev,
+      [currentPage]: prev[currentPage] + 1,
+    }));
+  };
 
   const renderPage = () => {
     switch (currentPage) {
       case "overview": return <OverviewPage onNavigate={setCurrentPage} />;
-      case "trends": return <TrendsPage onNavigate={setCurrentPage} />;
-      case "draft": return <DraftPage onNavigate={setCurrentPage} />;
-      case "content": return <ContentPage onNavigate={setCurrentPage} />;
+      case "trends": return <TrendsPage onNavigate={setCurrentPage} tourRestartToken={tourRestartToken.trends} />;
+      case "draft": return <DraftPage onNavigate={setCurrentPage} tourRestartToken={tourRestartToken.draft} />;
+      case "content": return <ContentPage onNavigate={setCurrentPage} tourRestartToken={tourRestartToken.content} />;
       case "dashboard": return <DashboardPage />;
       case "settings": return <SettingsPage />;
       default: return <OverviewPage onNavigate={setCurrentPage} />;
@@ -44,6 +57,7 @@ export default function Home() {
           onNavigate={setCurrentPage}
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebar={() => setSidebarCollapsed((prev) => !prev)}
+          onStartTour={triggerTour}
         />
         <main className="p-4 sm:p-6 lg:p-8 max-w-7xl">
           {renderPage()}
