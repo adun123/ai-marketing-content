@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BookmarkPlus, Check, Copy, Loader2, Pencil, RefreshCw, Sparkles, Target, Wand2 } from "lucide-react";
 
 type Platform = "Instagram" | "TikTok" | "LinkedIn" | "YouTube" | "X/Twitter";
@@ -171,6 +171,7 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [sent, setSent] = useState(false);
+  const outputPanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const imported = readImportedInsight();
@@ -208,7 +209,12 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
     setMode(nextMode);
   };
 
+  const scrollToOutputPanel = () => {
+    outputPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const runGenerate = (nextSeed: number) => {
+    scrollToOutputPanel();
     setLoading(true);
     setDraft(null);
     setSaved(false);
@@ -372,7 +378,17 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
                   <SelectField label="Target platform" value={insightForm.targetPlatform} onChange={(v: Platform) => setInsightForm(prev => ({ ...prev, targetPlatform: v }))} options={platforms} />
                   <ChipSelector label="Content type" value={insightForm.contentType} onChange={(v: ContentType) => setInsightForm(prev => ({ ...prev, contentType: v }))} options={contentTypes} />
                 </div>
+                <button
+                  type="button"
+                  disabled={loading || isGenerateDisabled}
+                  onClick={handleGenerate}
+                  className="btn-gradient sm:hidden mt-3 w-full inline-flex items-center justify-center gap-2 text-white text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-70"
+                >
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                  Generate Draft
+                </button>
               </div>
+              
             </>
           ) : (
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-5">
@@ -399,12 +415,21 @@ export default function DraftPage({ onNavigate }: { onNavigate?: (page: string) 
                   className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
+              <button
+                  type="button"
+                  disabled={loading || isGenerateDisabled}
+                  onClick={handleGenerate}
+                  className="btn-gradient sm:hidden mt-3 w-full inline-flex items-center justify-center gap-2 text-white text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-70"
+                >
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                  Generate Draft
+                </button>
             </div>
           )}
         </section>
 
         <section className="xl:col-span-5 space-y-4">
-          <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-5">
+          <div ref={outputPanelRef} className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Draft Output Panel</p>

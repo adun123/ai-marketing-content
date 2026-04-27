@@ -1,6 +1,6 @@
 "use client";
 import type { ElementType } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BookmarkPlus,
@@ -224,6 +224,7 @@ export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string)
   const [insight, setInsight] = useState<Insight | null>(null);
   const [saved, setSaved] = useState(false);
   const [sent, setSent] = useState(false);
+  const insightPanelRef = useRef<HTMLDivElement | null>(null);
 
   const filtered = useMemo(() => {
     return mockTrends
@@ -256,10 +257,17 @@ export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string)
     return byId ?? filtered[0] ?? null;
   }, [filtered, selectedId]);
 
+  const scrollToInsightPanelOnMobile = () => {
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 1023px)").matches) return;
+    insightPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const runGenerate = (kind: "generate" | "analyze") => {
     const base = selectedTrend ?? filtered[0] ?? null;
     if (!base) return;
 
+    scrollToInsightPanelOnMobile();
     setLoadingInsight(true);
     setSaved(false);
     setSent(false);
@@ -425,7 +433,7 @@ export default function TrendsPage({ onNavigate }: { onNavigate?: (page: string)
         </div>
 
         {/* Right column: AI Insight */}
-        <div className="lg:col-span-5">
+        <div ref={insightPanelRef} className="lg:col-span-5">
           <div className="sticky top-24 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">AI Insight Panel</h2>
